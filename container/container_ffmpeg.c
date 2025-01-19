@@ -977,7 +977,7 @@ static void FFMPEGThread(Context_t *context)
                 }
                 
                 pcmPrivateData_t pcmExtradata;
-                pcmExtradata.channels              = get_codecpar(audioTrack->stream)->channels;
+                pcmExtradata.channels              = get_codecpar(audioTrack->stream)->ch_layout.nb_channels;
                 pcmExtradata.bits_per_coded_sample = get_codecpar(audioTrack->stream)->bits_per_coded_sample;
                 pcmExtradata.sample_rate           = get_codecpar(audioTrack->stream)->sample_rate;
                 pcmExtradata.bit_rate              = get_codecpar(audioTrack->stream)->bit_rate;
@@ -1117,13 +1117,13 @@ static void FFMPEGThread(Context_t *context)
                             }
 
                             swr = swr_alloc();
-                            out_channels = c->channels;
+                            out_channels = c->ch_layout.nb_channels;
 
-                            if (c->channel_layout == 0)
+                            if (&c->ch_layout == 0)
                             {
-                                c->channel_layout = av_get_default_channel_layout( c->channels );
+                                av_channel_layout_default(&c->ch_layout,  c->ch_layout.nb_channels );
                             }
-                            out_channel_layout = c->channel_layout;
+                            out_channel_layout = (uint64_t)&c->ch_layout;
                             
                             uint8_t downmix = stereo_software_decoder && out_channels > 2 ? 1 : 0;
 #ifdef __sh__
@@ -1139,7 +1139,7 @@ static void FFMPEGThread(Context_t *context)
                                 out_channels = 2;
                             }
                             
-                            av_opt_set_int(swr, "in_channel_layout",	c->channel_layout,	0);
+                            av_opt_set_int(swr, "in_channel_layout",	(uint64_t)&c->ch_layout,0);
                             av_opt_set_int(swr, "out_channel_layout",	out_channel_layout,	0);
                             av_opt_set_int(swr, "in_sample_rate",		c->sample_rate,		0);
                             av_opt_set_int(swr, "out_sample_rate",		out_sample_rate,	0);
@@ -1178,7 +1178,7 @@ static void FFMPEGThread(Context_t *context)
                         
                         //////////////////////////////////////////////////////////////////////
                         // Update pcmExtradata according to decode parameters
-                        pcmExtradata.channels              = av_get_channel_layout_nb_channels(out_channel_layout);
+                        pcmExtradata.channels              = av_popcount64(out_channel_layout);
                         pcmExtradata.bits_per_coded_sample = 16;
                         pcmExtradata.sample_rate           = out_sample_rate;
                         // The data described by the sample format is always in native-endian order
@@ -2341,7 +2341,7 @@ int32_t container_ffmpeg_update_tracks(Context_t *context, char *filename, int32
 
                             int32_t object_type = 2; // LC
                             int32_t sample_index = aac_get_sample_rate_index(get_codecpar(stream)->sample_rate);
-                            int32_t chan_config = get_chan_config(get_codecpar(stream)->channels);
+                            int32_t chan_config = get_chan_config(get_codecpar(stream)->ch_layout.nb_channels);
                             ffmpeg_printf(1,"aac object_type %d\n", object_type);
                             ffmpeg_printf(1,"aac sample_index %d\n", sample_index);
                             ffmpeg_printf(1,"aac chan_config %d\n", chan_config);
@@ -3110,7 +3110,7 @@ static int32_t Command(void  *_context, ContainerCmd_t command, void *argument)
     return ret;
 }
 
-static char *FFMPEG_Capabilities[] = {"aac", "avi", "mkv", "mp4", "ts", "mov", "flv", "flac", "mp3", "mpg", "m2ts", "vob", "evo", "wmv","wma", "asf", "mp2", "m4v", "m4a", "fla", "divx", "dat", "mpeg", "trp", "mts", "vdr", "ogg", "wav", "wtv", "asx", "mvi", "png", "jpg", "jpeg", "ra", "ram", "rm", "3gp", "amr", "rmvb", "rm", "webm", "opus", "m3u8", "mpd", NULL };
+static char *FFMPEG_Capabilities[] = {"3dostr", "3g2", "3gp", "4xm", "aa", "aac", "aax", "ac3", "ac4", "ace", "acm", "act", "adf", "adp", "ads", "adts", "adx", "aea", "afc", "aiff", "aix", "alaw", "alias_pix", "alp", "alsa", "amr", "amrnb", "amrwb", "anm", "apac", "apc", "ape", "apm", "apng", "aptx", "aptx_hd", "aqtitle", "argo_asf", "argo_brp", "argo_cvg", "asf", "asf_o", "ass", "ast", "asx", "au", "av1", "avi", "avr", "avs", "avs2", "avs3", "bethsoftvid", "bfi", "bfstm", "bin", "bink", "binka", "bit", "bitpacked", "bmp_pipe", "bmv", "boa", "bonk", "brender_pix", "brstm", "c93", "caf", "cavsvideo", "cdg", "cdxl", "cine", "codec2", "codec2raw", "concat", "cri_pipe", "dash", "dat", "data", "daud", "dcstr", "dds_pipe", "derf", "dfa", "dfpwm", "dhav", "divx", "dirac", "dnxhd", "dpx_pipe", "dsf", "dsicin", "dss", "dts", "dtshd", "dv", "dvbsub", "dvbtxt", "dxa", "ea", "eac3", "ea_cdata", "epaf", "evc", "evo", "exr_pipe", "f32be", "f32le", "f64be", "f64le", "fbdev", "ffmetadata", "film_cpk", "filmstrip", "fits", "fla", "flac", "flic", "flv", "frm", "fsb", "fwse", "g722", "g723_1", "g726", "g726le", "g729", "gdv", "gem_pipe", "genh", "gif", "gif_pipe", "gsm", "gxf", "h261", "h263", "h264", "hca", "hcom", "hdr_pipe", "hevc", "hls", "hnm", "iamf", "ico", "idcin", "idf", "iff", "ifv", "ilbc", "image2", "image2pipe", "imf", "ingenient", "ipmovie", "ipu", "ircam", "iss", "iv8", "ivf", "ivr", "j2k_pipe", "jacosub", "jpegls_pipe", "jpeg_pipe", "jpegxl_anim", "jpegxl_pipe", "jpg", "jv", "kux", "kvag", "laf", "latm", "lavfi", "lc3", "live_flv", "lmlm4", "loas", "lrc", "luodat", "lvf", "lxf", "m2ts", "m3u8", "m4a", "m4v", "matroska", "mca", "mcc", "mgsts", "microdvd", "mj2", "mjpeg", "mjpeg_2000", "mkv", "mlp", "mlv", "mm", "mmf", "mods", "moflex", "mov", "mp2", "mp3", "mp4", "mpc", "mpc8", "mpd", "mpeg", "mpeg1video", "mpeg2video", "mpegts", "mpegtsraw", "mpegvideo", "mpjpeg", "mpl2", "mpsub", "msf", "msnwctcp", "msp", "mtaf", "mts", "mtv", "mulaw", "musx", "mv", "mvi", "mxf", "mxg", "nc", "nistsphere", "nsp", "nsv", "nut", "nuv", "obu", "ogg", "oma", "osq", "oss", "paf", "pam_pipe", "pbm_pipe", "pcx_pipe", "pdv", "pfm_pipe", "pgm_pipe", "pgmyuv_pipe", "pgx_pipe", "phm_pipe", "photocd_pipe", "pictor_pipe", "pjs", "pmp", "png", "png_pipe", "pp_bnk", "ppm_pipe", "psd_pipe", "psxstr", "pva", "pvf", "qcp", "qdraw_pipe", "qoa", "qoi_pipe", "r3d", "ra", "ram", "rawvideo", "rcwt", "realtext", "redspark", "rka", "rl2", "rm", "roq", "rpl", "rsd", "rso", "rtp", "rtsp", "s16be", "s16le", "s24be", "s24le", "s32be", "s32le", "s337m", "s8", "sami", "sap", "sbc", "sbg", "scc", "scd", "sdns", "sdp", "sdr2", "sds", "sdx", "ser", "sga", "sgi_pipe", "shn", "siff", "simbiosis_imx", "sln", "smjpeg", "smk", "smush", "sol", "sox", "spdif", "srt", "stl", "subviewer", "subviewer1", "sunrast_pipe", "sup", "svag", "svg_pipe", "svs", "swf", "tak", "tedcaptions", "thp", "tiertexseq", "tiff_pipe", "tmv", "trp", "truehd", "ts", "tta", "tty", "txd", "ty", "u16be", "u16le", "u24be", "u24le", "u32be", "u32le", "u8", "usm", "v210", "v210x", "v4l2", "vag", "vbn_pipe", "vc1", "vc1test", "vdr", "vidc", "video4linux2", "vividas", "vivo", "vmd", "vob", "vobsub", "voc", "vpk", "vplayer", "vqf", "vvc", "w64", "wady", "wav", "wavarc", "wc3movie", "webm", "webm_dash_manifest", "webp_pipe", "webvtt", "wma", "wmv", "wsaud", "wsd", "wsvqa", "wtv", "wv", "wve", "xa", "xbin", "xbm_pipe", "xmd", "xmv", "xpm_pipe", "xvag", "xwd_pipe", "xwma", "yop", "yuv4mpegpipe", NULL };
 
 Container_t FFMPEGContainer = {
     "FFMPEG",
